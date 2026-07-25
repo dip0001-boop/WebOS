@@ -1,0 +1,69 @@
+* { box-sizing: border-box; }
+body { margin: 0; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; overflow: hidden; }
+button, input, select, textarea { font: inherit; }
+button { cursor: pointer; }
+
+.desktop { height: 100vh; width: 100vw; position: relative; overflow: hidden; color: #172033; background: linear-gradient(135deg, #89f7fe, #66a6ff); }
+.desktop.aurora { background: linear-gradient(135deg, #0f2027, #2c5364, #a8ff78); }
+.desktop.sunset { background: linear-gradient(135deg, #ff7e5f, #feb47b, #6a82fb); }
+.desktop.ocean { background: linear-gradient(135deg, #2193b0, #6dd5ed, #fff); }
+.desktop.graphite { background: linear-gradient(135deg, #232526, #414345); }
+.desktop.dark { color: #f7f7fb; }
+
+.menubar { position: fixed; top: 0; left: 0; right: 0; height: 30px; display: flex; justify-content: space-between; align-items: center; padding: 0 18px; background: rgba(255,255,255,.34); backdrop-filter: blur(18px); z-index: 9999; border-bottom: 1px solid rgba(255,255,255,.28); }
+.dark .menubar { background: rgba(15,18,25,.45); }
+.menubar span { display: flex; gap: 8px; align-items: center; }
+.logout { border: 0; color: inherit; background: transparent; display: grid; place-items: center; }
+
+.dock { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; padding: 10px 14px; border-radius: 24px; background: rgba(255,255,255,.34); backdrop-filter: blur(24px); box-shadow: 0 20px 60px rgba(0,0,0,.25); z-index: 9999; }
+.dock button { position: relative; width: 54px; height: 54px; border: 0; border-radius: 16px; background: rgba(255,255,255,.58); display: grid; place-items: center; transition: transform .18s ease; color: inherit; }
+.dock button:hover { transform: scale(1.18) translateY(-7px); }
+.dock svg { width: 28px; height: 28px; }
+.dock i { position: absolute; bottom: -7px; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+
+.rnd { position: absolute; }
+.window { height: 100%; border-radius: 16px; overflow: hidden; background: rgba(255,255,255,.72); backdrop-filter: blur(24px); box-shadow: 0 30px 90px rgba(0,0,0,.32); border: 1px solid rgba(255,255,255,.45); }
+.dark .window { background: rgba(23,25,35,.82); border-color: rgba(255,255,255,.12); }
+.titlebar { height: 38px; display: grid; grid-template-columns: 90px 1fr 90px; align-items: center; text-align: center; background: rgba(255,255,255,.24); cursor: grab; user-select: none; }
+.lights { display: flex; gap: 8px; padding-left: 14px; }
+.lights button { width: 13px; height: 13px; border: 0; border-radius: 50%; }
+.red { background: #ff5f57; } .yellow { background: #febc2e; } .green { background: #28c840; }
+.window-body { height: calc(100% - 38px); overflow: hidden; }
+
+.finder, .notes { height: 100%; display: grid; grid-template-columns: 190px 1fr; }
+.finder aside, .notes aside { padding: 14px; background: rgba(255,255,255,.28); border-right: 1px solid rgba(0,0,0,.08); display: flex; flex-direction: column; gap: 8px; }
+.finder aside button, .notes aside button { border: 0; color: inherit; background: transparent; border-radius: 9px; padding: 9px; text-align: left; display: flex; gap: 8px; align-items: center; }
+.finder aside button.active, .notes aside button.active, .finder aside button:hover, .notes aside button:hover { background: rgba(255,255,255,.4); }
+.finder main { padding: 14px; overflow: auto; }
+.toolbar { display: flex; gap: 10px; margin-bottom: 14px; }
+.toolbar button, .item button, .settings button, .login-card button { border: 0; border-radius: 10px; padding: 8px 12px; background: #1677ff; color: white; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(135px, 1fr)); gap: 14px; }
+.item { min-height: 122px; border-radius: 14px; background: rgba(255,255,255,.34); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 10px; text-align: center; }
+.item svg { width: 34px; height: 34px; }
+.item button { font-size: 12px; padding: 5px 7px; margin: 2px; }
+.notes textarea { width: 100%; height: 100%; border: 0; resize: none; background: rgba(255,255,255,.18); padding: 22px; outline: none; color: inherit; }
+.notes.full { display: block; }
+
+.settings { padding: 24px; }
+.settings label { display: flex; gap: 12px; align-items: center; margin: 16px 0; }
+.wallpapers { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+.wallpaper { height: 88px; color: white; text-transform: capitalize; }
+.wallpaper.active { outline: 3px solid #fff; }
+.wallpaper.default { background: linear-gradient(135deg, #89f7fe, #66a6ff); }
+.wallpaper.aurora { background: linear-gradient(135deg, #0f2027, #2c5364, #a8ff78); }
+.wallpaper.sunset { background: linear-gradient(135deg, #ff7e5f, #feb47b, #6a82fb); }
+.wallpaper.ocean { background: linear-gradient(135deg, #2193b0, #6dd5ed, #fff); }
+.wallpaper.graphite { background: linear-gradient(135deg, #232526, #414345); }
+
+.login { height: 100vh; display: grid; place-items: center; background: linear-gradient(135deg, #141e30, #243b55); }
+.login-card { width: 360px; padding: 30px; border-radius: 24px; background: rgba(255,255,255,.88); box-shadow: 0 30px 80px rgba(0,0,0,.35); display: flex; flex-direction: column; gap: 12px; text-align: center; }
+.login-card input { padding: 12px; border: 1px solid #ccd; border-radius: 10px; }
+.login-card a { cursor: pointer; color: #1677ff; }
+.error { color: #c62828; }
+
+.spotdrop { position: fixed; inset: 0; background: rgba(0,0,0,.18); display: grid; place-items: start center; padding-top: 14vh; z-index: 10000; }
+.spotlight { width: min(620px, 92vw); border-radius: 18px; background: rgba(255,255,255,.86); backdrop-filter: blur(24px); box-shadow: 0 25px 90px rgba(0,0,0,.38); overflow: hidden; }
+.spotlight input { width: 100%; border: 0; padding: 18px 20px; font-size: 18px; outline: none; background: transparent; }
+.spotlight [cmdk-list] { padding: 8px; }
+.spotlight [cmdk-item] { padding: 12px; border-radius: 10px; cursor: pointer; }
+.spotlight [cmdk-item][data-selected="true"] { background: #1677ff; color: white; }
