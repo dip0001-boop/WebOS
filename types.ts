@@ -1,6 +1,17 @@
-export type AppId = 'finder' | 'notes' | 'editor' | 'settings' | 'preview' | 'launchpad' | 'search';
+export type AppId =
+  | 'finder'
+  | 'notes'
+  | 'editor'
+  | 'settings'
+  | 'preview'
+  | 'launchpad'
+  | 'search'
+  | 'calendar'
+  | 'reminders';
+
 export type Theme = 'light' | 'dark';
 export type FsType = 'folder' | 'note';
+export type FocusMode = 'off' | 'do-not-disturb' | 'work' | 'personal';
 
 export interface WebtopWindow {
   id: string;
@@ -17,6 +28,7 @@ export interface WebtopWindow {
   spaceId: string;
   nodeId?: string;
   snapped?: 'left' | 'right' | null;
+  stageGroup?: string | null;
 }
 
 export interface Space {
@@ -41,5 +53,14 @@ export interface Preferences {
   wallpaper: string;
   theme: Theme;
   activeSpaceId: string;
+  focusMode: FocusMode;
   updated_at?: string;
+}
+
+export interface NotificationItem {
+  id: string;
+  title: string;
+  body: string;
+  time: string;
+  read: boolean;
 }
