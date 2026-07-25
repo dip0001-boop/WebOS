@@ -24,6 +24,7 @@ const defaultPrefs = (userId: string): Preferences => ({
   user_id: userId,
   wallpaper: 'default',
   theme: 'light',
+  activeSpaceId: 'space-1',
 });
 
 const readJson = <T,>(key: string, fallback: T): T => {
@@ -88,7 +89,9 @@ export async function getNodes(userId: string): Promise<FsNode[]> {
   return (data as FsNode[]) ?? [];
 }
 
-export async function upsertNode(node: Partial<FsNode> & { owner_id: string; name: string; type: 'folder' | 'note' }) {
+export async function upsertNode(
+  node: Partial<FsNode> & { owner_id: string; name: string; type: FsType }
+) {
   const payload = { ...node, updated_at: new Date().toISOString() };
 
   if (!supabase) {
@@ -99,7 +102,7 @@ export async function upsertNode(node: Partial<FsNode> & { owner_id: string; nam
       content: node.content ?? null,
       ...payload,
     } as FsNode;
-    localStorage.setItem('webtop:nodes', JSON.stringify([...nodes.filter(n => n.id !== saved.id), saved]));
+    localStorage.setItem('webtop:nodes', JSON.stringify([...nodes.filter((n) => n.id !== saved.id), saved]));
     return saved;
   }
 
@@ -110,7 +113,7 @@ export async function upsertNode(node: Partial<FsNode> & { owner_id: string; nam
 export async function deleteNode(id: string) {
   if (!supabase) {
     const nodes = await getNodes('local');
-    localStorage.setItem('webtop:nodes', JSON.stringify(nodes.filter(n => n.id !== id && n.parent_id !== id)));
+    localStorage.setItem('webtop:nodes', JSON.stringify(nodes.filter((n) => n.id !== id && n.parent_id !== id)));
     return;
   }
 
@@ -120,7 +123,7 @@ export async function deleteNode(id: string) {
 export async function saveWindow(userId: string, w: WebtopWindow) {
   if (!supabase) {
     const windows = readJson<WebtopWindow[]>('webtop:wins', []);
-    localStorage.setItem('webtop:wins', JSON.stringify([...windows.filter(x => x.id !== w.id), w]));
+    localStorage.setItem('webtop:wins', JSON.stringify([...windows.filter((x) => x.id !== w.id), w]));
     return;
   }
 
@@ -141,7 +144,7 @@ export async function saveWindow(userId: string, w: WebtopWindow) {
 export async function deleteWindowSession(userId: string, id: string) {
   if (!supabase) {
     const windows = readJson<WebtopWindow[]>('webtop:wins', []);
-    localStorage.setItem('webtop:wins', JSON.stringify(windows.filter(w => w.id !== id)));
+    localStorage.setItem('webtop:wins', JSON.stringify(windows.filter((w) => w.id !== id)));
     return;
   }
 
@@ -163,5 +166,8 @@ export async function loadWindows(userId: string): Promise<WebtopWindow[]> {
     zIndex: r.z_index,
     minimized: r.minimized,
     maximized: r.maximized,
+    fullscreen: false,
+    spaceId: r.space_id || 'space-1',
+    snapped: null,
   }));
 }
