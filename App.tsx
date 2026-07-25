@@ -3,10 +3,12 @@ import { AnimatePresence, motion } from 'framer-motion';
 import {
   FileText, Folder, Grid3X3, LogOut, Monitor, Settings as SettingsIcon,
   StickyNote, User, Layers, Maximize2, Minimize2, X, Search as SearchIcon,
+  Bell, Calendar as CalendarIcon, CheckSquare, Moon, Sun, Wifi, Battery,
+  Volume2, Focus, Tag,
 } from 'lucide-react';
 import { Rnd } from 'react-rnd';
-import { type FormEvent, type ReactNode, useEffect, useMemo, useState } from 'react';
-import type { AppId, FsNode, WebtopWindow } from './types';
+import { type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import type { AppId, FsNode, WebtopWindow, FocusMode } from './types';
 import { useWebtop } from './store';
 import {
   deleteNode, deleteWindowSession, ensureDefaults, getNodes,
@@ -20,6 +22,8 @@ const apps: { id: AppId; name: string; icon: ReactNode }[] = [
   { id: 'notes', name: 'Notes', icon: <StickyNote /> },
   { id: 'editor', name: 'Editor', icon: <FileText /> },
   { id: 'search', name: 'Search', icon: <SearchIcon /> },
+  { id: 'calendar', name: 'Calendar', icon: <CalendarIcon /> },
+  { id: 'reminders', name: 'Reminders', icon: <CheckSquare /> },
   { id: 'settings', name: 'Settings', icon: <SettingsIcon /> },
 ];
 
@@ -50,6 +54,8 @@ const wallpapers = [
   { id: 'mist', name: 'Misty Hills', url: 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=2560&q=80' },
   { id: 'night-sky', name: 'Night Sky', url: 'https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=2560&q=80' },
 ];
+
+const TAG_COLORS = ['#ff453a', '#ff9f0a', '#ffd60a', '#30d158', '#64d2ff', '#bf5af2'];
 
 const debounce = <T extends (...args: any[]) => void>(fn: T, ms: number) => {
   let timeout: number;
@@ -96,7 +102,7 @@ function Login({ onUser }: { onUser: (id: string) => void }) {
 }
 
 function WindowFrame({ win, userId, children }: { win: WebtopWindow; userId: string; children: ReactNode }) {
-  const { focusWindow, closeWindow, minimizeWindow, toggleMaximize, toggleFullscreen, updateWindow, snapWindow } = useWebtop();
+  const { focusWindow, closeWindow, minimizeWindow, toggleMaximize, toggleFullscreen, updateWindow, snapWindow, stageManagerEnabled } = useWebtop();
   const [persist] = useState(() => debounce((w: WebtopWindow) => saveWindow(userId, w), 500));
 
   if (win.minimized) return null;
@@ -110,7 +116,7 @@ function WindowFrame({ win, userId, children }: { win: WebtopWindow; userId: str
 
   return (
     <Rnd
-      className="rnd"
+      className={`rnd ${stageManagerEnabled ? 'stage-manager' : ''}`}
       bounds="parent"
       size={win.fullscreen ? { width: '100%', height: '100%' } : win.maximized ? { width: '100%', height: 'calc(100% - 78px)' } : { width: win.width, height: win.height }}
       position={win.fullscreen ? { x: 0, y: 0 } : win.maximized ? { x: 0, y: 30 } : { x: win.x, y: win.y }}
@@ -155,18 +161,24 @@ function WindowFrame({ win, userId, children }: { win: WebtopWindow; userId: str
 function Finder({ userId }: { userId: string }) {
   const [nodes, setNodes] = useState<FsNode[]>([]);
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
+  const [tabs, setTabs] = useState<{ id: string; folderId: string | null; name: string }[]>([
+    { id: 'tab-1', folderId: null, name: 'Desktop' },
+  ]);
+  const [activeTab, setActiveTab] = useState('tab-1');
+  const [quickLook, setQuickLook] = useState<FsNode | null>(null);
   const openApp = useWebtop(s => s.openApp);
   const refresh = () => getNodes(userId).then(setNodes);
 
   useEffect(() => { void refresh(); }, [userId]);
 
   const folders = nodes.filter(n => n.type === 'folder');
-  const items = nodes.filter(n => selectedFolder ? n.parent_id === selectedFolder : !n.parent_id);
+  const currentFolderId = tabs.find(t => t.id === activeTab)?.folderId ?? null;
+  const items = nodes.filter(n => currentFolderId ? n.parent_id === currentFolderId : !n.parent_id);
 
   async function create(type: 'folder' | 'note') {
     const name = prompt(`New ${type} name`);
     if (!name) return;
-    await upsertNode({ owner_id: userId, parent_id: selectedFolder, name, type, content: type === 'note' ? '' : null });
+    await upsertNode({ owner_id: userId, parent_id: currentFolderId, name, type, content: type === 'note' ? '' : null, tags: [] });
     refresh();
   }
 
@@ -177,34 +189,106 @@ function Finder({ userId }: { userId: string }) {
     refresh();
   }
 
+  async function addTag(n: FsNode) {
+    const tag = prompt('Tag name');
+    if (!tag) return;
+    const tags = [...(n.tags || []), tag];
+    await upsertNode({ ...n, tags, owner_id: userId });
+    refresh();
+  }
+
+  function openFolderInTab(folder: FsNode) {
+    const existing = tabs.find(t => t.folderId === folder.id);
+    if (existing) {
+      setActiveTab(existing.id);
+    } else {
+      const id = `tab-${Date.now()}`;
+      setTabs(t => [...t, { id, folderId: folder.id, name: folder.name }]);
+      setActiveTab(id);
+    }
+  }
+
   return (
     <div className="finder">
       <aside>
-        <button className={!selectedFolder ? 'active' : ''} onClick={() => setSelectedFolder(null)}><Monitor size={16} /> Desktop</button>
+        <button className={!currentFolderId ? 'active' : ''} onClick={() => {
+          setTabs(t => t.map(tab => tab.id === activeTab ? { ...tab, folderId: null, name: 'Desktop' } : tab));
+        }}><Monitor size={16} /> Desktop</button>
         {folders.map(f => (
-          <button className={selectedFolder === f.id ? 'active' : ''} key={f.id} onClick={() => setSelectedFolder(f.id)}>
+          <button key={f.id} className={currentFolderId === f.id ? 'active' : ''} onClick={() => {
+            setTabs(t => t.map(tab => tab.id === activeTab ? { ...tab, folderId: f.id, name: f.name } : tab));
+          }}>
             <Folder size={16} />{f.name}
           </button>
         ))}
       </aside>
-      <main>
+
+      <div className="finder-main">
+        <div className="finder-tabs">
+          {tabs.map(tab => (
+            <div key={tab.id} className={`finder-tab ${activeTab === tab.id ? 'active' : ''}`} onClick={() => setActiveTab(tab.id)}>
+              <span>{tab.name}</span>
+              {tabs.length > 1 && (
+                <button onClick={e => {
+                  e.stopPropagation();
+                  setTabs(t => t.filter(x => x.id !== tab.id));
+                  if (activeTab === tab.id) setActiveTab(tabs[0].id);
+                }}>×</button>
+              )}
+            </div>
+          ))}
+          <button className="tab-add" onClick={() => {
+            const id = `tab-${Date.now()}`;
+            setTabs(t => [...t, { id, folderId: null, name: 'Desktop' }]);
+            setActiveTab(id);
+          }}>+</button>
+        </div>
+
         <div className="toolbar">
           <button onClick={() => create('folder')}>New Folder</button>
           <button onClick={() => create('note')}>New Note</button>
         </div>
+
         <div className="grid">
           {items.map(n => (
-            <div className="item" key={n.id} onDoubleClick={() => n.type === 'note' && openApp('editor', n.id, n.name)}>
+            <div
+              className="item"
+              key={n.id}
+              onDoubleClick={() => {
+                if (n.type === 'note') openApp('editor', n.id, n.name);
+                else openFolderInTab(n);
+              }}
+              onKeyDown={e => { if (e.key === ' ') { e.preventDefault(); setQuickLook(n); } }}
+              tabIndex={0}
+            >
               <span>{n.type === 'folder' ? <Folder /> : <FileText />}</span>
               <b>{n.name}</b>
+              {n.tags && n.tags.length > 0 && (
+                <div className="item-tags">
+                  {n.tags.map((t, i) => (
+                    <span key={t} className="tag" style={{ background: TAG_COLORS[i % TAG_COLORS.length] }}>{t}</span>
+                  ))}
+                </div>
+              )}
               <div>
                 <button onClick={() => rename(n)}>Rename</button>
+                <button onClick={() => addTag(n)}><Tag size={12} /></button>
                 <button onClick={async () => { await deleteNode(n.id); refresh(); }}>Delete</button>
               </div>
             </div>
           ))}
         </div>
-      </main>
+      </div>
+
+      {quickLook && (
+        <div className="quicklook" onClick={() => setQuickLook(null)}>
+          <div className="quicklook-card" onClick={e => e.stopPropagation()}>
+            <h3>{quickLook.name}</h3>
+            <p>{quickLook.type === 'note' ? (quickLook.content || 'Empty note') : 'Folder'}</p>
+            <button onClick={() => setQuickLook(null)}>Close</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -255,20 +339,15 @@ function SearchApp() {
   async function doSearch(e?: FormEvent) {
     e?.preventDefault();
     if (!query.trim()) return;
-
     setLoading(true);
     setSearched(true);
     setResults([]);
     setAbstract('');
 
     try {
-      const res = await fetch(
-        `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&pretty=1`
-      );
+      const res = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&pretty=1`);
       const data = await res.json();
-
       setAbstract(data.AbstractText || data.Answer || '');
-
       const related = (data.RelatedTopics || [])
         .filter((t: any) => t.Text && t.FirstURL)
         .slice(0, 10)
@@ -278,7 +357,6 @@ function SearchApp() {
           content: t.Text,
           pretty_url: t.FirstURL.replace('https://', '').split('/')[0],
         }));
-
       setResults(related);
     } catch {
       setResults([]);
@@ -292,39 +370,20 @@ function SearchApp() {
       <div className="search-hero">
         <h1>Search</h1>
         <form onSubmit={doSearch} className="search-form">
-          <input
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            placeholder="Search with DuckDuckGo..."
-            autoFocus
-          />
+          <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search with DuckDuckGo..." autoFocus />
           <button type="submit">Search</button>
         </form>
         {query && (
-          <a
-            className="full-search-link"
-            href={`https://duckduckgo.com/?q=${encodeURIComponent(query)}`}
-            target="_blank"
-            rel="noreferrer"
-          >
+          <a className="full-search-link" href={`https://duckduckgo.com/?q=${encodeURIComponent(query)}`} target="_blank" rel="noreferrer">
             Open full results on DuckDuckGo →
           </a>
         )}
       </div>
-
       {loading && <div className="search-loading">Searching...</div>}
-
       {!loading && searched && (
         <div className="search-results">
-          {abstract && (
-            <div className="search-abstract">
-              <strong>Summary</strong>
-              <p>{abstract}</p>
-            </div>
-          )}
-
+          {abstract && <div className="search-abstract"><strong>Summary</strong><p>{abstract}</p></div>}
           {results.length === 0 && !abstract && <p>No instant results. Use the link above for full search.</p>}
-
           {results.map((r, i) => (
             <a key={i} href={r.url} target="_blank" rel="noreferrer" className="search-result">
               <div className="result-url">{r.pretty_url}</div>
@@ -338,10 +397,72 @@ function SearchApp() {
   );
 }
 
+function CalendarApp() {
+  const today = new Date();
+  const [month, setMonth] = useState(today.getMonth());
+  const [year, setYear] = useState(today.getFullYear());
+
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstDay = new Date(year, month, 1).getDay();
+  const monthName = new Date(year, month).toLocaleString('default', { month: 'long' });
+
+  return (
+    <div className="calendar-app">
+      <div className="calendar-header">
+        <button onClick={() => { if (month === 0) { setMonth(11); setYear(y => y - 1); } else setMonth(m => m - 1); }}>‹</button>
+        <h2>{monthName} {year}</h2>
+        <button onClick={() => { if (month === 11) { setMonth(0); setYear(y => y + 1); } else setMonth(m => m + 1); }}>›</button>
+      </div>
+      <div className="calendar-grid">
+        {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => <div key={d} className="cal-day-name">{d}</div>)}
+        {Array.from({ length: firstDay }).map((_, i) => <div key={`e-${i}`} />)}
+        {Array.from({ length: daysInMonth }).map((_, i) => {
+          const day = i + 1;
+          const isToday = day === today.getDate() && month === today.getMonth() && year === today.getFullYear();
+          return <div key={day} className={`cal-day ${isToday ? 'today' : ''}`}>{day}</div>;
+        })}
+      </div>
+    </div>
+  );
+}
+
+function RemindersApp() {
+  const [items, setItems] = useState([
+    { id: '1', text: 'Finish Webtop features', done: false },
+    { id: '2', text: 'Test Notification Centre', done: false },
+    { id: '3', text: 'Deploy to Render', done: true },
+  ]);
+  const [newItem, setNewItem] = useState('');
+
+  return (
+    <div className="reminders-app">
+      <h2>Reminders</h2>
+      <form onSubmit={e => {
+        e.preventDefault();
+        if (!newItem.trim()) return;
+        setItems(i => [...i, { id: Date.now().toString(), text: newItem, done: false }]);
+        setNewItem('');
+      }} className="reminder-add">
+        <input value={newItem} onChange={e => setNewItem(e.target.value)} placeholder="New reminder..." />
+        <button type="submit">Add</button>
+      </form>
+      <div className="reminder-list">
+        {items.map(item => (
+          <label key={item.id} className={`reminder-item ${item.done ? 'done' : ''}`}>
+            <input type="checkbox" checked={item.done} onChange={() => setItems(list => list.map(x => x.id === item.id ? { ...x, done: !x.done } : x))} />
+            <span>{item.text}</span>
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function Settings({ userId }: { userId: string }) {
   const prefs = useWebtop(s => s.preferences)!;
   const setTheme = useWebtop(s => s.setTheme);
   const setWallpaper = useWebtop(s => s.setWallpaper);
+  const setFocusMode = useWebtop(s => s.setFocusMode);
   const save = (patch: Partial<typeof prefs>) => savePreferences({ ...prefs, ...patch, user_id: userId });
 
   return (
@@ -356,6 +477,20 @@ function Settings({ userId }: { userId: string }) {
         }}>
           <option value="light">Light</option>
           <option value="dark">Dark</option>
+        </select>
+      </label>
+
+      <label>
+        Focus Mode
+        <select value={prefs.focusMode || 'off'} onChange={e => {
+          const mode = e.target.value as FocusMode;
+          setFocusMode(mode);
+          save({ focusMode: mode });
+        }}>
+          <option value="off">Off</option>
+          <option value="do-not-disturb">Do Not Disturb</option>
+          <option value="work">Work</option>
+          <option value="personal">Personal</option>
         </select>
       </label>
 
@@ -420,7 +555,6 @@ function Spotlight({ open, onClose, nodes }: { open: boolean; onClose: () => voi
 function MissionControl() {
   const { windows, spaces, activeSpaceId, missionControlOpen, setMissionControl, switchSpace, addSpace, focusWindow } = useWebtop();
   if (!missionControlOpen) return null;
-
   return (
     <div className="mission-control" onClick={() => setMissionControl(false)}>
       <div className="mc-spaces" onClick={e => e.stopPropagation()}>
@@ -452,7 +586,6 @@ function MissionControl() {
 function Launchpad() {
   const { launchpadOpen, setLaunchpad, openApp } = useWebtop();
   if (!launchpadOpen) return null;
-
   return (
     <div className="launchpad" onClick={() => setLaunchpad(false)}>
       <div className="launchpad-grid" onClick={e => e.stopPropagation()}>
@@ -468,15 +601,89 @@ function Launchpad() {
   );
 }
 
+function NotificationCentre() {
+  const { notificationCentreOpen, setNotificationCentre, notifications, markNotificationRead, clearNotifications } = useWebtop();
+  if (!notificationCentreOpen) return null;
+
+  return (
+    <div className="notification-centre" onClick={() => setNotificationCentre(false)}>
+      <div className="nc-panel" onClick={e => e.stopPropagation()}>
+        <div className="nc-header">
+          <h3>Notifications</h3>
+          <button onClick={clearNotifications}>Clear All</button>
+        </div>
+        {notifications.length === 0 && <p className="nc-empty">No notifications</p>}
+        {notifications.map(n => (
+          <div key={n.id} className={`nc-item ${n.read ? 'read' : ''}`} onClick={() => markNotificationRead(n.id)}>
+            <strong>{n.title}</strong>
+            <p>{n.body}</p>
+            <small>{n.time}</small>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ControlCentre() {
+  const { controlCentreOpen, setControlCentre, preferences, setTheme, setFocusMode, toggleStageManager, stageManagerEnabled } = useWebtop();
+  if (!controlCentreOpen) return null;
+
+  return (
+    <div className="control-centre" onClick={() => setControlCentre(false)}>
+      <div className="cc-panel" onClick={e => e.stopPropagation()}>
+        <div className="cc-row">
+          <button className="cc-btn" onClick={() => setTheme(preferences?.theme === 'dark' ? 'light' : 'dark')}>
+            {preferences?.theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+            <span>{preferences?.theme === 'dark' ? 'Light' : 'Dark'}</span>
+          </button>
+          <button className="cc-btn" onClick={() => setFocusMode(preferences?.focusMode === 'do-not-disturb' ? 'off' : 'do-not-disturb')}>
+            <Focus size={20} />
+            <span>Focus</span>
+          </button>
+        </div>
+        <div className="cc-row">
+          <button className={`cc-btn ${stageManagerEnabled ? 'active' : ''}`} onClick={toggleStageManager}>
+            <Layers size={20} />
+            <span>Stage Manager</span>
+          </button>
+          <button className="cc-btn"><Wifi size={20} /><span>Wi-Fi</span></button>
+        </div>
+        <div className="cc-row">
+          <button className="cc-btn"><Volume2 size={20} /><span>Sound</span></button>
+          <button className="cc-btn"><Battery size={20} /><span>Battery</span></button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Screensaver({ active, onWake }: { active: boolean; onWake: () => void }) {
+  if (!active) return null;
+  return (
+    <div className="screensaver" onClick={onWake} onKeyDown={onWake}>
+      <div className="ss-clock">
+        {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+      </div>
+      <div className="ss-date">
+        {new Date().toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [userId, setUserId] = useState<string>();
   const [clock, setClock] = useState(new Date());
   const [spotlightOpen, setSpotlightOpen] = useState(false);
   const [nodes, setNodes] = useState<FsNode[]>([]);
+  const idleTimer = useRef<number>();
 
   const {
     windows, focusedId, preferences, activeSpaceId,
-    setPreferences, restoreWindows, setMissionControl, setLaunchpad, toggleFullscreen,
+    setPreferences, restoreWindows, setMissionControl, setLaunchpad,
+    setNotificationCentre, setControlCentre, toggleFullscreen,
+    screensaverActive, setScreensaver, addNotification,
   } = useWebtop();
 
   useEffect(() => {
@@ -486,11 +693,28 @@ export default function App() {
   useEffect(() => {
     if (!userId) return;
     ensureDefaults(userId).then(async () => {
-      setPreferences(await getPreferences(userId));
+      const prefs = await getPreferences(userId);
+      setPreferences({ ...prefs, focusMode: prefs.focusMode || 'off' });
       setNodes(await getNodes(userId));
       restoreWindows(await loadWindows(userId));
     });
   }, [userId]);
+
+  // Idle screensaver
+  useEffect(() => {
+    const resetIdle = () => {
+      setScreensaver(false);
+      clearTimeout(idleTimer.current);
+      idleTimer.current = window.setTimeout(() => setScreensaver(true), 120000); // 2 min
+    };
+    resetIdle();
+    const events = ['mousemove', 'keydown', 'click'];
+    events.forEach(e => addEventListener(e, resetIdle));
+    return () => {
+      clearTimeout(idleTimer.current);
+      events.forEach(e => removeEventListener(e, resetIdle));
+    };
+  }, []);
 
   useEffect(() => {
     const tick = setInterval(() => setClock(new Date()), 1000);
@@ -504,6 +728,9 @@ export default function App() {
         setMissionControl(false);
         setLaunchpad(false);
         setSpotlightOpen(false);
+        setNotificationCentre(false);
+        setControlCentre(false);
+        setScreensaver(false);
       }
     };
     addEventListener('keydown', keydown);
@@ -515,19 +742,26 @@ export default function App() {
   const focused = windows.find(w => w.id === focusedId);
   const currentWallpaper = wallpapers.find(w => w.id === preferences?.wallpaper) || wallpapers[0];
   const visibleWindows = windows.filter(w => w.spaceId === activeSpaceId);
+  const unread = useWebtop.getState().notifications.filter(n => !n.read).length;
 
   return (
     <div
-      className={`desktop ${preferences?.theme || 'light'}`}
-      style={{
-        backgroundImage: `url(${currentWallpaper.url})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-      }}
+      className={`desktop ${preferences?.theme || 'light'} ${preferences?.focusMode === 'do-not-disturb' ? 'dnd' : ''}`}
+      style={{ backgroundImage: `url(${currentWallpaper.url})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
     >
       <div className="menubar">
         <b>{focused?.title || 'Webtop'}</b>
         <span>
+          {preferences?.focusMode && preferences.focusMode !== 'off' && (
+            <span className="focus-badge"><Focus size={12} /> {preferences.focusMode}</span>
+          )}
+          <button className="menubar-btn" onClick={() => setControlCentre(true)} title="Control Centre">
+            <Wifi size={14} />
+          </button>
+          <button className="menubar-btn" onClick={() => setNotificationCentre(true)} title="Notifications">
+            <Bell size={14} />
+            {unread > 0 && <i className="badge">{unread}</i>}
+          </button>
           <User size={14} /> {clock.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           <button className="logout" onClick={() => supabase?.auth.signOut().finally(() => setUserId(undefined))}>
             <LogOut size={14} />
@@ -542,6 +776,8 @@ export default function App() {
             {w.appId === 'notes' && <Notes userId={userId} />}
             {w.appId === 'editor' && <Notes userId={userId} nodeId={w.nodeId} full />}
             {w.appId === 'search' && <SearchApp />}
+            {w.appId === 'calendar' && <CalendarApp />}
+            {w.appId === 'reminders' && <RemindersApp />}
             {w.appId === 'settings' && <Settings userId={userId} />}
           </WindowFrame>
         ))}
@@ -551,6 +787,9 @@ export default function App() {
       <Spotlight open={spotlightOpen} onClose={() => setSpotlightOpen(false)} nodes={nodes} />
       <MissionControl />
       <Launchpad />
+      <NotificationCentre />
+      <ControlCentre />
+      <Screensaver active={screensaverActive} onWake={() => setScreensaver(false)} />
     </div>
   );
 }
