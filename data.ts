@@ -25,6 +25,7 @@ const defaultPrefs = (userId: string): Preferences => ({
   wallpaper: 'sonoma-day',
   theme: 'light',
   activeSpaceId: 'space-1',
+  focusMode: 'off',
 });
 
 const readJson = <T,>(key: string, fallback: T): T => {
@@ -68,7 +69,8 @@ export async function getPreferences(userId: string): Promise<Preferences> {
   if (!supabase) return readJson('webtop:prefs', defaultPrefs(userId));
 
   const { data } = await supabase.from('preferences').select('*').eq('user_id', userId).single();
-  return (data as Preferences) ?? defaultPrefs(userId);
+  const prefs = (data as Preferences) ?? defaultPrefs(userId);
+  return { ...prefs, focusMode: prefs.focusMode || 'off' };
 }
 
 export async function savePreferences(prefs: Preferences) {
