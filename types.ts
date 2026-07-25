@@ -1,7 +1,6 @@
 export type AppId = 'finder' | 'notes' | 'editor' | 'settings' | 'preview' | 'launchpad';
-
 export type Theme = 'light' | 'dark';
-export type FsType = 'folder' | 'note' | 'image' | 'file';
+export type FsType = 'folder' | 'note';
 
 export interface WebtopWindow {
   id: string;
@@ -15,15 +14,14 @@ export interface WebtopWindow {
   minimized: boolean;
   maximized: boolean;
   fullscreen: boolean;
-  spaceId: string;          // which desktop this window belongs to
+  spaceId: string;
   nodeId?: string;
-  snapped?: 'left' | 'right' | 'top' | 'bottom' | null;
+  snapped?: 'left' | 'right' | null;
 }
 
 export interface Space {
   id: string;
   name: string;
-  wallpaper?: string;
 }
 
 export interface FsNode {
@@ -33,7 +31,7 @@ export interface FsNode {
   name: string;
   type: FsType;
   content: string | null;
-  tags?: string[];          // for Finder tags
+  tags?: string[];
   created_at?: string;
   updated_at?: string;
 }
