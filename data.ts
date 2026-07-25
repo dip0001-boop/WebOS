@@ -1,4 +1,4 @@
-import type { FsNode, Preferences, WebtopWindow } from './types';
+import type { FsNode, FsType, Preferences, WebtopWindow } from './types';
 import { supabase } from './supabase';
 
 const localNodes: FsNode[] = [
