@@ -1,4 +1,4 @@
-export type AppId = 'finder' | 'notes' | 'editor' | 'settings' | 'preview' | 'launchpad';
+export type AppId = 'finder' | 'notes' | 'editor' | 'settings' | 'preview' | 'launchpad' | 'search';
 export type Theme = 'light' | 'dark';
 export type FsType = 'folder' | 'note';
 
