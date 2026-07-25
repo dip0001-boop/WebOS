@@ -22,7 +22,7 @@ const localNodes: FsNode[] = [
 
 const defaultPrefs = (userId: string): Preferences => ({
   user_id: userId,
-  wallpaper: 'default',
+  wallpaper: 'sonoma-day',
   theme: 'light',
   activeSpaceId: 'space-1',
 });
