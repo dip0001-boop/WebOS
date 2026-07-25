@@ -39,23 +39,22 @@ const apps: { id: AppId; name: string; icon: ReactNode }[] = [
   { id: 'settings', name: 'Settings', icon: <SettingsIcon /> },
 ];
 
-// 15 macOS-inspired wallpapers (gradients that closely match real macOS looks)
 const wallpapers = [
-  { id: 'sonoma-day', name: 'Sonoma Day', css: 'linear-gradient(135deg, #a8d8ff 0%, #e8f4ff 40%, #f7e8c8 100%)' },
-  { id: 'sonoma-evening', name: 'Sonoma Evening', css: 'linear-gradient(135deg, #1a2a4a 0%, #3d5a80 40%, #ee6c4d 100%)' },
-  { id: 'sequoia', name: 'Sequoia', css: 'linear-gradient(160deg, #0f2027 0%, #203a43 50%, #2c5364 100%)' },
-  { id: 'ventura', name: 'Ventura', css: 'linear-gradient(135deg, #0b132b 0%, #1c2541 40%, #3a506b 100%)' },
-  { id: 'monterey', name: 'Monterey', css: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' },
-  { id: 'big-sur', name: 'Big Sur', css: 'linear-gradient(135deg, #37ecba 0%, #72afd3 50%, #37ecba 100%)' },
-  { id: 'catalina', name: 'Catalina', css: 'linear-gradient(135deg, #141e30 0%, #243b55 100%)' },
-  { id: 'mojave-day', name: 'Mojave Day', css: 'linear-gradient(135deg, #f6d365 0%, #fda085 100%)' },
-  { id: 'mojave-night', name: 'Mojave Night', css: 'linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)' },
-  { id: 'high-sierra', name: 'High Sierra', css: 'linear-gradient(135deg, #89f7fe 0%, #66a6ff 100%)' },
-  { id: 'sierra', name: 'Sierra', css: 'linear-gradient(135deg, #96fbc4 0%, #f9f586 100%)' },
-  { id: 'el-capitan', name: 'El Capitan', css: 'linear-gradient(135deg, #2193b0 0%, #6dd5ed 100%)' },
-  { id: 'yosemite', name: 'Yosemite', css: 'linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%)' },
-  { id: 'mavericks', name: 'Mavericks', css: 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%)' },
-  { id: 'graphite', name: 'Graphite', css: 'linear-gradient(135deg, #232526 0%, #414345 100%)' },
+  { id: 'sonoma-day', name: 'Sonoma Day', url: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=2560&q=80' },
+  { id: 'sonoma-evening', name: 'Sonoma Evening', url: 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=2560&q=80' },
+  { id: 'sequoia', name: 'Sequoia', url: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=2560&q=80' },
+  { id: 'ventura', name: 'Ventura', url: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=2560&q=80' },
+  { id: 'monterey', name: 'Monterey', url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=2560&q=80' },
+  { id: 'big-sur', name: 'Big Sur', url: 'https://images.unsplash.com/photo-1439066615861-d1af74d74000?w=2560&q=80' },
+  { id: 'catalina', name: 'Catalina', url: 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=2560&q=80' },
+  { id: 'mojave-day', name: 'Mojave Day', url: 'https://images.unsplash.com/photo-1509316785289-025f5b846b35?w=2560&q=80' },
+  { id: 'mojave-night', name: 'Mojave Night', url: 'https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=2560&q=80' },
+  { id: 'high-sierra', name: 'High Sierra', url: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=2560&q=80' },
+  { id: 'sierra', name: 'Sierra', url: 'https://images.unsplash.com/photo-1483728642387-6c3bdd6c93e5?w=2560&q=80' },
+  { id: 'el-capitan', name: 'El Capitan', url: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=2560&q=80' },
+  { id: 'yosemite', name: 'Yosemite', url: 'https://images.unsplash.com/photo-1426604966848-d7adac402bff?w=2560&q=80' },
+  { id: 'mavericks', name: 'Mavericks', url: 'https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?w=2560&q=80' },
+  { id: 'graphite', name: 'Graphite', url: 'https://images.unsplash.com/photo-1557683316-973673baf926?w=2560&q=80' },
 ];
 
 const debounce = <T extends (...args: any[]) => void>(fn: T, ms: number) => {
@@ -377,7 +376,11 @@ function Settings({ userId }: { userId: string }) {
           <button
             key={w.id}
             className={`wallpaper ${prefs.wallpaper === w.id ? 'active' : ''}`}
-            style={{ background: w.css }}
+            style={{
+              backgroundImage: `url(${w.url})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+            }}
             onClick={() => {
               setWallpaper(w.id);
               save({ wallpaper: w.id });
@@ -580,12 +583,10 @@ export default function App() {
         e.preventDefault();
         setSpotlightOpen(true);
       }
-      // Mission Control – F3 or Ctrl+Up
       if (e.key === 'F3' || ((e.metaKey || e.ctrlKey) && e.key === 'ArrowUp')) {
         e.preventDefault();
         setMissionControl(true);
       }
-      // Launchpad – F4 or Ctrl+L
       if (e.key === 'F4' || ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'l')) {
         e.preventDefault();
         setLaunchpad(true);
@@ -613,7 +614,11 @@ export default function App() {
   return (
     <div
       className={`desktop ${preferences?.theme || 'light'}`}
-      style={{ background: currentWallpaper.css }}
+      style={{
+        backgroundImage: `url(${currentWallpaper.url})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
     >
       <div className="menubar">
         <b>{focused?.title || 'Webtop'}</b>
