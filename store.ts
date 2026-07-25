@@ -11,6 +11,7 @@ const defaults: Record<
   settings: { title: 'Settings', x: 260, y: 156, width: 620, height: 430 },
   preview: { title: 'Preview', x: 180, y: 100, width: 680, height: 520 },
   launchpad: { title: 'Launchpad', x: 0, y: 0, width: 0, height: 0 },
+  search: { title: 'Search', x: 120, y: 80, width: 900, height: 620 },
 };
 
 interface WebtopState {
