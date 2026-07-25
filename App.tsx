@@ -141,7 +141,9 @@ function Finder({ userId }: { userId: string }) {
   const openApp = useWebtop(s => s.openApp);
   const refresh = () => getNodes(userId).then(setNodes);
 
-  useEffect(refresh, [userId]);
+  useEffect(() => {
+    void refresh();
+  }, [userId]);
 
   const folders = nodes.filter(n => n.type === 'folder');
   const items = nodes.filter(n => selectedFolder ? n.parent_id === selectedFolder : !n.parent_id);
