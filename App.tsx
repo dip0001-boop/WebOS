@@ -69,6 +69,14 @@ const wallpapers = [
   { id: 'night-sky', name: 'Night Sky', url: 'https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=2560&q=80' },
 ];
 
+const SEARCH_INSTANCES = [
+  'https://searx.be',
+  'https://search.sapti.me',
+  'https://searx.tiekoetter.com',
+  'https://paulgo.io',
+  'https://search.bus-hit.me',
+];
+
 const debounce = <T extends (...args: any[]) => void>(fn: T, ms: number) => {
   let timeout: number;
   return (...args: Parameters<T>) => {
@@ -362,6 +370,7 @@ function SearchApp() {
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [error, setError] = useState('');
 
   async function doSearch(e?: FormEvent) {
     e?.preventDefault();
@@ -369,18 +378,55 @@ function SearchApp() {
 
     setLoading(true);
     setSearched(true);
+    setError('');
+    setResults([]);
 
-    try {
-      const res = await fetch(
-        `https://searx.be/search?q=${encodeURIComponent(query)}&format=json&categories=general`
-      );
-      const data = await res.json();
-      setResults(data.results?.slice(0, 12) || []);
-    } catch {
-      setResults([]);
-    } finally {
-      setLoading(false);
+    let found = false;
+
+    for (const instance of SEARCH_INSTANCES) {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 6000);
+
+        const res = await fetch(
+          `${instance}/search?q=${encodeURIComponent(query)}&format=json&categories=general`,
+          { signal: controller.signal }
+        );
+        clearTimeout(timeout);
+
+        if (!res.ok) continue;
+
+        const data = await res.json();
+        if (data.results && data.results.length > 0) {
+          setResults(data.results.slice(0, 12));
+          found = true;
+          break;
+        }
+      } catch {
+        // try next instance
+      }
     }
+
+    if (!found) {
+      setError('All search proxies failed. Try again later or open results in a new tab.');
+      // Fallback: still show a useful link
+      setResults([
+        {
+          title: `Search Google for “${query}”`,
+          url: `https://www.google.com/search?q=${encodeURIComponent(query)}`,
+          content: 'Open this link to search on Google directly.',
+          pretty_url: 'google.com',
+        },
+        {
+          title: `Search DuckDuckGo for “${query}”`,
+          url: `https://duckduckgo.com/?q=${encodeURIComponent(query)}`,
+          content: 'Open this link to search on DuckDuckGo.',
+          pretty_url: 'duckduckgo.com',
+        },
+      ]);
+    }
+
+    setLoading(false);
   }
 
   return (
@@ -398,7 +444,8 @@ function SearchApp() {
         </form>
       </div>
 
-      {loading && <div className="search-loading">Searching...</div>}
+      {loading && <div className="search-loading">Searching across proxies...</div>}
+      {error && !loading && <div className="search-loading" style={{ color: '#c62828' }}>{error}</div>}
 
       {!loading && searched && (
         <div className="search-results">
